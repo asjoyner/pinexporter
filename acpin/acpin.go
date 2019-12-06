@@ -18,9 +18,10 @@ import (
 // PinIn represents a AC GPIO pin
 type PinIn struct {
 	name     string
-	gpiopin  gpio.PinIn
+	gpiopin  gpio.PinIO
 	lastEdge time.Time
 	mu       sync.RWMutex // protects lastEdge
+	halt     bool
 }
 
 // New initializes and returns a PinIn struct which is initialized to detect
@@ -42,20 +43,32 @@ func New(name string) (*PinIn, error) {
 	return &pin, nil
 }
 
+// Name returns the configured name of the pin.
+func (p *PinIn) Name() string {
+	return p.name
+}
+
 // Read returns the Level of the pin.  It is High if the pin has seen an AC
 // cycle in the last 3 seconds.
 func (p *PinIn) Read() gpio.Level {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	if p.lastEdge.Before(time.Now().Add(-3 * time.Second)) {
-		return gpio.High
+		return gpio.Low
 	}
-	return gpio.Low
+	return gpio.High
+}
+
+func (p *PinIn) Halt() {
+	p.halt = true
+	return
 }
 
 func (p *PinIn) watchPin() {
 	for {
-		// TODO: build a way to close this goroutine
+		if p.halt {
+			return
+		}
 		glog.V(1).Infof("waiting for edge on pin %s...", p.name)
 		if p.gpiopin.WaitForEdge(time.Second) {
 			glog.V(1).Infof("Found Edge on pin %s!", p.name)
