@@ -1,7 +1,6 @@
 [[pin]]
 GPIO=5
 Name="humidifier"
-DetectAC=true
 Labels={ Thermostat="Main Floor" }
 
 #[[pin]]

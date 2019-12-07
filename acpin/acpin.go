@@ -1,10 +1,8 @@
-// Package acpin presents a similar interface to the gpio.PinIn package it
-// includes, but handles consistent detection of AC voltage on the GPIO pin in
-// software.
+// Package acpin presents the gpio.PinIn interface to handle consistent
+// software detection of AC voltage on a named GPIO pin.
 package acpin
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -12,11 +10,11 @@ import (
 
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/conn/gpio/gpioreg"
-	"periph.io/x/periph/host"
 )
 
-// PinIn represents a AC GPIO pin
+// PinIn implements gpio.PinIn to represent voltage on an AC GPIO pin
 type PinIn struct {
+	gpio.PinIO
 	name     string
 	gpiopin  gpio.PinIO
 	lastEdge time.Time
@@ -24,23 +22,25 @@ type PinIn struct {
 	halt     bool
 }
 
-// New initializes and returns a PinIn struct which is initialized to detect
-// voltage on the pin defined by "name".
-func New(name string) (*PinIn, error) {
+// ByName returns a PinIn associated with GPIO pin described by name.  It will
+// return gpio.High when it has detected AC voltage.
+//
+// This function duplicates gpioreg.ByName signature to simplify code that
+// interacts with both types of pins.
+func ByName(name string) gpio.PinIO {
 	pin := PinIn{name: name}
-	if _, err := host.Init(); err != nil {
-		return nil, err
-	}
 	pin.gpiopin = gpioreg.ByName(name)
-	if pin.gpiopin == nil {
-		return nil, fmt.Errorf("no such pin: %s", name)
-	}
-	if err := pin.gpiopin.In(gpio.PullDown, gpio.RisingEdge); err != nil {
-		return nil, fmt.Errorf("failed to initialize pin %s: %s", name, err)
-	}
+	return &pin
+}
 
-	go pin.watchPin()
-	return &pin, nil
+// In configures the pin for detecting AC voltage.
+// It always sets edge detection only to RisingEdge, to reduce interrupt rate.
+func (p *PinIn) In(pull gpio.Pull, _ gpio.Edge) error {
+	if err := p.gpiopin.In(pull, gpio.RisingEdge); err != nil {
+		return err
+	}
+	go p.watchPin()
+	return nil
 }
 
 // Name returns the configured name of the pin.
@@ -59,9 +59,10 @@ func (p *PinIn) Read() gpio.Level {
 	return gpio.High
 }
 
-func (p *PinIn) Halt() {
+// Halt stops the gorouting watching the pin for AC voltage.
+func (p *PinIn) Halt() error {
 	p.halt = true
-	return
+	return nil
 }
 
 func (p *PinIn) watchPin() {

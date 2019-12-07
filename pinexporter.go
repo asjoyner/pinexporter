@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/periph/conn/gpio/gpioreg"
 	"periph.io/x/periph/host"
 
 	"github.com/BurntSushi/toml"
@@ -51,16 +52,16 @@ func configurePins(conf Config) ([]Pin, error) {
 	}
 	pins := make([]Pin, len(conf.Pin))
 	for _, p := range conf.Pin {
-		// TODO: build a DC pin receiver
-		/*
-			newPin := gpioreg.ByName
-			if p.DetectAC {
-				newPin = acpin.New
-			}
-		*/
-		pin, err := acpin.New(fmt.Sprintf("%d", p.GPIO))
-		if err != nil {
-			return nil, err
+		newPin := gpioreg.ByName
+		if p.DetectAC {
+			newPin = acpin.ByName
+		}
+		pin := newPin(fmt.Sprintf("%d", p.GPIO))
+		if pin == nil {
+			return nil, fmt.Errorf("no such pin: %d", p.GPIO)
+		}
+		if err := pin.In(gpio.PullDown, gpio.RisingEdge); err != nil {
+			return nil, fmt.Errorf("failed to initialize pin %d: %s", p.GPIO, err)
 		}
 		pins = append(pins, pin)
 	}

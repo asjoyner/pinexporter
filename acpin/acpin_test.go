@@ -25,45 +25,54 @@ func init() {
 }
 
 func TestName(t *testing.T) {
-	p, err := New("quietpin")
-	if err != nil {
-		t.Fatal(err)
+	p := ByName("quietpin")
+	if p == nil {
+		t.Errorf("no such pin: quietpin")
 	}
 	name := p.Name()
 	if name != "quietpin" {
-		t.Fatalf("want: quietpin, got: %q", name)
+		t.Errorf("want: quietpin, got: %q", name)
 	}
 }
 
 func TestQuietPin(t *testing.T) {
-	p, err := New("quietpin")
-	if err != nil {
-		t.Fatal(err)
+	p := ByName("quietpin")
+	if p == nil {
+		t.Errorf("no such pin: quietpin")
+	}
+	if err := p.In(gpio.PullDown, gpio.BothEdges); err != nil {
+		t.Errorf("failed to initialize: %s", err)
 	}
 	if res := p.Read(); res != gpio.Low {
-		t.Fatalf("quiet pin is not low: want: gpio.Low, got: %s", res)
+		t.Errorf("quiet pin is not low: want: gpio.Low, got: %s", res)
 	}
 }
 
 func TestQuietPinStaysLow(t *testing.T) {
-	p, err := New("quietpin")
-	if err != nil {
-		t.Fatal(err)
+	p := ByName("quietpin")
+	if p == nil {
+		t.Errorf("no such pin: quietpin")
+	}
+	if err := p.In(gpio.PullDown, gpio.BothEdges); err != nil {
+		t.Errorf("failed to initialize: %s", err)
 	}
 	time.Sleep(time.Second)
 	if res := p.Read(); res != gpio.Low {
-		t.Fatalf("quiet pin did not stay low: want: gpio.Low, got: %s", res)
+		t.Errorf("quiet pin did not stay low: want: gpio.Low, got: %s", res)
 	}
 }
 
 func TestNoisyPin(t *testing.T) {
-	p, err := New("wigglypin")
-	if err != nil {
-		t.Fatal(err)
+	p := ByName("wigglypin")
+	if p == nil {
+		t.Errorf("no such pin: wigglypin")
+	}
+	if err := p.In(gpio.PullDown, gpio.BothEdges); err != nil {
+		t.Errorf("failed to initialize: %s", err)
 	}
 	time.Sleep(time.Second)
 	if res := p.Read(); res != gpio.High {
-		t.Fatalf("noisy pin is not high: want: gpio.High, got: %s", res)
+		t.Errorf("noisy pin is not high: want: gpio.High, got: %s", res)
 	}
 }
 
