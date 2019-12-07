@@ -1,0 +1,42 @@
+[[pin]]
+GPIO=5
+Name="humidifier"
+DetectAC=true
+Labels={ Thermostat="Main Floor" }
+
+#[[pin]]
+#GPIO=6
+#Name="unused"
+#DetectAC=true
+#Labels={ Thermostat="Main Floor" }
+
+[[pin]]
+GPIO=13
+Name="reversing"
+DetectAC=true
+Labels={ Thermostat="Main Floor" }
+
+#[[pin]]
+#GPIO=19
+#Name="unused"
+#DetectAC=true
+#Labels={ Thermostat="Main Floor" }
+
+[[pin]]
+GPIO=26
+Name="fan"
+DetectAC=true
+Labels={ Thermostat="Main Floor" }
+
+[[pin]]
+GPIO=16
+Name="auxheat"
+DetectAC=true
+Labels={ Thermostat="Main Floor" }
+
+[[pin]]
+GPIO=21
+Name="compressor"
+DetectAC=true
+Labels={ Thermostat="Main Floor" }
+
