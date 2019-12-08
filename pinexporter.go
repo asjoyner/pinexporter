@@ -19,9 +19,10 @@ var (
 	configPath = flag.String("config", "config.toml", "Path to the configuration file.")
 )
 
-// Pin provides a uniform interface for AC and DC GPIO pins
+// Pin provides a limited uniform interface for AC and DC GPIO pins
 type Pin interface {
 	Name() string
+	In(gpio.Pull, gpio.Edge) error
 	Read() gpio.Level
 }
 
@@ -50,13 +51,14 @@ func configurePins(conf Config) ([]Pin, error) {
 	if len(conf.Pin) == 0 {
 		return nil, fmt.Errorf("no pins specified")
 	}
-	pins := make([]Pin, len(conf.Pin))
+	pins := make([]Pin, 0)
 	for _, p := range conf.Pin {
-		newPin := gpioreg.ByName
+		var pin Pin
 		if p.DetectAC {
-			newPin = acpin.ByName
+			pin = acpin.ByName(fmt.Sprintf("%d", p.GPIO))
+		} else {
+			pin = gpioreg.ByName(fmt.Sprintf("%d", p.GPIO))
 		}
-		pin := newPin(fmt.Sprintf("%d", p.GPIO))
 		if pin == nil {
 			return nil, fmt.Errorf("no such pin: %d", p.GPIO)
 		}
@@ -89,12 +91,12 @@ func main() {
 	pins, err := configurePins(conf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(3)
+		os.Exit(4)
 	}
 
 	for {
 		time.Sleep(time.Second)
-		for _, pin := range pins {
+		for i, pin := range pins {
 			fmt.Printf("Pin %s is: %s\n", pin.Name(), pin.Read())
 		}
 		fmt.Println()

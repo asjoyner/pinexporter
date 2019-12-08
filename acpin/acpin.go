@@ -14,12 +14,15 @@ import (
 
 // PinIn implements gpio.PinIn to represent voltage on an AC GPIO pin
 type PinIn struct {
-	gpio.PinIO
-	name     string
 	gpiopin  gpio.PinIO
 	lastEdge time.Time
 	mu       sync.RWMutex // protects lastEdge
 	halt     bool
+}
+
+// Name returns the name of the pin.
+func (p *PinIn) Name() string {
+	return p.gpiopin.Name()
 }
 
 // ByName returns a PinIn associated with GPIO pin described by name.  It will
@@ -27,9 +30,12 @@ type PinIn struct {
 //
 // This function duplicates gpioreg.ByName signature to simplify code that
 // interacts with both types of pins.
-func ByName(name string) gpio.PinIO {
-	pin := PinIn{name: name}
+func ByName(name string) *PinIn {
+	pin := PinIn{N: name}
 	pin.gpiopin = gpioreg.ByName(name)
+	if pin.gpiopin == nil {
+		return nil
+	}
 	return &pin
 }
 
@@ -41,11 +47,6 @@ func (p *PinIn) In(pull gpio.Pull, _ gpio.Edge) error {
 	}
 	go p.watchPin()
 	return nil
-}
-
-// Name returns the configured name of the pin.
-func (p *PinIn) Name() string {
-	return p.name
 }
 
 // Read returns the Level of the pin.  It is High if the pin has seen an AC
@@ -70,15 +71,15 @@ func (p *PinIn) watchPin() {
 		if p.halt {
 			return
 		}
-		glog.V(1).Infof("waiting for edge on pin %s...", p.name)
+		glog.V(1).Infof("waiting for edge on pin %s...", p.gpiopin.Name())
 		if p.gpiopin.WaitForEdge(time.Second) {
-			glog.V(1).Infof("Found Edge on pin %s!", p.name)
+			glog.V(1).Infof("Found Edge on pin %s!", p.gpiopin.Name)
 			p.mu.Lock()
 			p.lastEdge = time.Now()
 			p.mu.Unlock()
 			time.Sleep(250 * time.Millisecond)
 			continue
 		}
-		glog.V(1).Infof("timed out with no edge on pin %s", p.name)
+		glog.V(1).Infof("timed out with no edge on pin %s", p.gpiopin.Name())
 	}
 }
