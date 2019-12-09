@@ -115,7 +115,7 @@ func main() {
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
-	go log.Fatal(http.ListenAndServe(*addr, nil))
+	go func() { log.Fatal(http.ListenAndServe(*addr, nil)) }()
 
 	for {
 		time.Sleep(time.Second)
