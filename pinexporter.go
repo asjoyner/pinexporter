@@ -17,6 +17,7 @@ import (
 	"github.com/asjoyner/pinexporter/acpin"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -113,7 +114,7 @@ func main() {
 		os.Exit(4)
 	}
 
-	http.Handle("/metrics", prometheus.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 	go log.Fatal(http.ListenAndServe(*addr, nil))
 
 	for {
