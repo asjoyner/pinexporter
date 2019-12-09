@@ -112,23 +112,27 @@ func configurePins(conf Config) ([]configuredPin, error) {
 
 func main() {
 	flag.Parse()
+	glog.Infof("initializaing GPIO chipset")
 	if _, err := host.Init(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
+	glog.Infof("reading config: %s", configPath)
 	tomlBytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 
+	glog.Infof("parsing TOML config file")
 	conf, err := parseConfig(string(tomlBytes))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(3)
 	}
 
+	glog.Infof("configuring GPIO pins")
 	pins, err := configurePins(conf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
