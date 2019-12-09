@@ -111,7 +111,7 @@ func configurePins(conf Config) ([]configuredPin, error) {
 }
 
 func main() {
-
+	flag.Parse()
 	if _, err := host.Init(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
