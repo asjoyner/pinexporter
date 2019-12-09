@@ -31,12 +31,11 @@ DetectAC=true
 [[pin]]
 GPIO=2
 Name="pancakes"
-Labels={ Foo="Bar" }
 `
 	want := Config{
 		Pin: []pinConfig{
 			{GPIO: 1, Name: "waffles", DetectAC: true},
-			{GPIO: 2, Name: "pancakes", Labels: map[string]string{"Foo": "Bar"}},
+			{GPIO: 2, Name: "pancakes"},
 		},
 	}
 

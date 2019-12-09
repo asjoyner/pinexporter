@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -13,10 +15,26 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/asjoyner/pinexporter/acpin"
+	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
 	configPath = flag.String("config", "config.toml", "Path to the configuration file.")
+	addr       = flag.String(
+		"addr",
+		":4746",
+		"The hostname and port to bind to and serve /metrics.",
+	)
+	pinExp = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "pin",
+			Help: "Status of the GPIO pin identified by the label.",
+		},
+		[]string{
+			// name is the name of the pin from the config.toml file
+			"name"},
+	)
 )
 
 // Pin provides a limited uniform interface for AC and DC GPIO pins
@@ -36,7 +54,6 @@ type pinConfig struct {
 	GPIO     int
 	Name     string
 	DetectAC bool
-	Labels   map[string]string
 }
 
 func parseConfig(tomlString string) (Config, error) {
@@ -71,6 +88,8 @@ func configurePins(conf Config) ([]Pin, error) {
 }
 
 func main() {
+	prometheus.MustRegister(pinExp) // export the Prometheus variable
+
 	if _, err := host.Init(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -94,11 +113,18 @@ func main() {
 		os.Exit(4)
 	}
 
+	http.Handle("/metrics", prometheus.Handler())
+	go log.Fatal(http.ListenAndServe(*addr, nil))
+
 	for {
 		time.Sleep(time.Second)
 		for _, pin := range pins {
-			fmt.Printf("Pin %s is: %s\n", pin.Name(), pin.Read())
+			glog.V(1).Infof("Pin %s is: %s\n", pin.Name(), pin.Read())
+			if pin.Read() == gpio.High {
+				pinExp.With(prometheus.Labels{"name": pin.Name()}).Set(1)
+			} else {
+				pinExp.With(prometheus.Labels{"name": pin.Name()}).Set(0)
+			}
 		}
-		fmt.Println()
 	}
 }
