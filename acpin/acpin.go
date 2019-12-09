@@ -71,15 +71,15 @@ func (p *PinIn) watchPin() {
 		if p.halt {
 			return
 		}
-		glog.V(1).Infof("waiting for edge on pin %s...", p.gpiopin.Name())
+		glog.V(2).Infof("waiting for edge on pin %s...", p.gpiopin.Name())
 		if p.gpiopin.WaitForEdge(time.Second) {
-			glog.V(1).Infof("Found Edge on pin %s!", p.gpiopin.Name())
+			glog.V(2).Infof("Found Edge on pin %s!", p.gpiopin.Name())
 			p.mu.Lock()
 			p.lastEdge = time.Now()
 			p.mu.Unlock()
 			time.Sleep(250 * time.Millisecond)
 			continue
 		}
-		glog.V(1).Infof("timed out with no edge on pin %s", p.gpiopin.Name())
+		glog.V(2).Infof("timed out with no edge on pin %s", p.gpiopin.Name())
 	}
 }
