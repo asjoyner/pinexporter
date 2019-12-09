@@ -11,31 +11,32 @@ import (
 )
 
 var (
-	quietEdge = make(chan gpio.Level)
-	quietPin  = gpiotest.Pin{N: "quietpin", L: gpio.Low, EdgesChan: quietEdge}
+	quietEdge  = make(chan gpio.Level)
+	quietPin   = gpiotest.Pin{N: "quietpin", L: gpio.Low, EdgesChan: quietEdge}
+	quietPinAC = gpiotest.Pin{N: "quietpinAC", L: gpio.Low, EdgesChan: quietEdge}
 )
 
 func init() {
 	gpioreg.Register(&quietPin)
-	gpioreg.RegisterAlias("424242", "quietpin")
-	gpioreg.RegisterAlias("424243", "quietpin")
+	gpioreg.Register(&quietPinAC)
 }
 
 func TestParseConfig(t *testing.T) {
 	config := `# Test Config
 [[pin]]
-GPIO=1
+GPIO="1"
 Name="waffles"
 DetectAC=true
 
 [[pin]]
-GPIO=2
+GPIO="2"
 Name="pancakes"
+Labels={"foo"= "bar"}
 `
 	want := Config{
 		Pin: []pinConfig{
-			{GPIO: 1, Name: "waffles", DetectAC: true},
-			{GPIO: 2, Name: "pancakes"},
+			{GPIO: "1", Name: "waffles", DetectAC: true},
+			{GPIO: "2", Name: "pancakes", Labels: map[string]string{"foo": "bar"}},
 		},
 	}
 
@@ -61,24 +62,37 @@ func TestInvalidConfig(t *testing.T) {
 	}
 }
 
+func TestConfigureInvalidPin(t *testing.T) {
+	conf := Config{
+		Pin: []pinConfig{
+			{GPIO: "nosuchpin", Name: "nosuchpin"},
+			{GPIO: "nosuchpin", Name: "nosuchpin", DetectAC: true},
+		},
+	}
+	_, err := configurePins(conf)
+	if err == nil {
+		t.Errorf("configuring invalid pin returned no error!")
+	}
+}
+
 func TestConfigurePins(t *testing.T) {
 	conf := Config{
 		Pin: []pinConfig{
-			{GPIO: 424242, Name: "quietpin"},
-			{GPIO: 424243, Name: "quietpin", DetectAC: true},
+			{GPIO: "quietpin", Name: "quietpin"},
+			{GPIO: "quietpinAC", Name: "quietpinAC", DetectAC: true},
 		},
 	}
 	pins, err := configurePins(conf)
 	if err != nil {
-		t.Errorf("configuring test pins: %s", err)
+		t.Fatalf("configuring test pins: %s", err)
 	}
-	for i, pin := range pins {
-		if pin == nil {
+	for i, p := range pins {
+		if p.pin == nil {
 			t.Errorf("pin %d is nil!?", i)
 			continue
 		}
-		t.Logf("testing read from pin %s", pin.Name())
-		got := pin.Read()
+		t.Logf("testing read from pin %s", p.config.Name)
+		got := p.pin.Read()
 		if got != gpio.Low {
 			t.Errorf("pin %d, want: gpio.High, got: %s\n", i, got)
 		}

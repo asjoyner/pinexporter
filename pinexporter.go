@@ -27,15 +27,7 @@ var (
 		":4746",
 		"The hostname and port to bind to and serve /metrics.",
 	)
-	pinExp = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "pin",
-			Help: "Status of the GPIO pin identified by the label.",
-		},
-		[]string{
-			// name is the name of the pin from the config.toml file
-			"name"},
-	)
+	helpText = "Status of the GPIO pin identified by the label."
 )
 
 // Pin provides a limited uniform interface for AC and DC GPIO pins
@@ -52,11 +44,20 @@ type Config struct {
 
 // pinConfig represents the configuration of each individual pin
 type pinConfig struct {
-	GPIO     int
+	GPIO     string
 	Name     string
 	DetectAC bool
+	Labels   map[string]string
 }
 
+// configuredPin matches a pinConfig structs to the configured Pin to be monitored
+type configuredPin struct {
+	config pinConfig
+	pin    Pin
+	metric prometheus.Gauge
+}
+
+// parseConfig parses a TOML string into a Config struct
 func parseConfig(tomlString string) (Config, error) {
 	var conf Config
 	if _, err := toml.Decode(tomlString, &conf); err != nil {
@@ -65,31 +66,51 @@ func parseConfig(tomlString string) (Config, error) {
 	return conf, nil
 }
 
-func configurePins(conf Config) ([]Pin, error) {
+// configurePins accepts a Config struct, initalizes a set of Pins, and stores the pin objects in the
+func configurePins(conf Config) ([]configuredPin, error) {
 	if len(conf.Pin) == 0 {
 		return nil, fmt.Errorf("no pins specified")
 	}
-	pins := make([]Pin, 0)
+	pins := make([]configuredPin, 0, len(conf.Pin))
 	for _, p := range conf.Pin {
+		// Initialize the GPIO pin
 		var pin Pin
 		if p.DetectAC {
-			pin = acpin.ByName(fmt.Sprintf("%d", p.GPIO))
+			pin = acpin.ByName(p.GPIO)
 		} else {
-			pin = gpioreg.ByName(fmt.Sprintf("%d", p.GPIO))
+			pin = gpioreg.ByName(p.GPIO)
 		}
 		if pin == nil {
-			return nil, fmt.Errorf("no such pin: %d", p.GPIO)
+			return nil, fmt.Errorf("no GPIO pin named: %s", p.GPIO)
 		}
 		if err := pin.In(gpio.PullDown, gpio.RisingEdge); err != nil {
-			return nil, fmt.Errorf("failed to initialize pin %d: %s", p.GPIO, err)
+			return nil, fmt.Errorf("failed to initialize pin %s: %s", p.GPIO, err)
 		}
-		pins = append(pins, pin)
+
+		// Configure the Prometheus Gauge metric
+		labelNames := []string{"gpio"}
+		labels := map[string]string{"gpio": p.GPIO}
+		for name, value := range p.Labels {
+			labelNames = append(labelNames, name)
+			labels[name] = value
+		}
+		g := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{Name: p.Name, Help: helpText},
+			labelNames,
+		)
+		if err := prometheus.Register(g); err != nil {
+			return nil, fmt.Errorf("failed to register metric for pin %s: %s", p.GPIO, err)
+		}
+		metric, err := g.GetMetricWith(labels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set metrics for pin %s: %s", p.GPIO, err)
+		}
+		pins = append(pins, configuredPin{config: p, pin: pin, metric: metric})
 	}
 	return pins, nil
 }
 
 func main() {
-	prometheus.MustRegister(pinExp) // export the Prometheus variable
 
 	if _, err := host.Init(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -119,12 +140,13 @@ func main() {
 
 	for {
 		time.Sleep(time.Second)
-		for _, pin := range pins {
-			glog.V(1).Infof("Pin %s is: %s\n", pin.Name(), pin.Read())
-			if pin.Read() == gpio.High {
-				pinExp.With(prometheus.Labels{"name": pin.Name()}).Set(1)
+		for _, p := range pins {
+			value := p.pin.Read()
+			glog.V(1).Infof("Pin %s [%s] is: %s\n", p.config.Name, p.config.GPIO, value)
+			if value == gpio.High {
+				p.metric.Set(1)
 			} else {
-				pinExp.With(prometheus.Labels{"name": pin.Name()}).Set(0)
+				p.metric.Set(0)
 			}
 		}
 	}
