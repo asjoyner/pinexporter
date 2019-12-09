@@ -118,7 +118,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	glog.Infof("reading config: %s", configPath)
+	glog.Infof("reading config: %s", *configPath)
 	tomlBytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
