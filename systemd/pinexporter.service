@@ -1,0 +1,15 @@
+[Unit]
+Description=Exports the status of GPIO pins to Prometheus
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=asjoyner
+ExecStart=/home/asjoyner/go/src/github.com/asjoyner/pinexporter/pinexporter --config=/path/to/config
+
+[Install]
+WantedBy=multi-user.target
+
