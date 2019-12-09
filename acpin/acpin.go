@@ -31,7 +31,7 @@ func (p *PinIn) Name() string {
 // This function duplicates gpioreg.ByName signature to simplify code that
 // interacts with both types of pins.
 func ByName(name string) *PinIn {
-	pin := PinIn{N: name}
+	pin := PinIn{}
 	pin.gpiopin = gpioreg.ByName(name)
 	if pin.gpiopin == nil {
 		return nil

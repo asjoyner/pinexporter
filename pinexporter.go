@@ -96,7 +96,7 @@ func main() {
 
 	for {
 		time.Sleep(time.Second)
-		for i, pin := range pins {
+		for _, pin := range pins {
 			fmt.Printf("Pin %s is: %s\n", pin.Name(), pin.Read())
 		}
 		fmt.Println()
